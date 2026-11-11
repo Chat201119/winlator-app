@@ -627,6 +627,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
         }
 
+        // Butcher Creeks: the menu asks for its own on-screen button layout when it starts the game.
+        int butcherProfileId = getIntent().getIntExtra("controls_profile_id", 0);
+        if (shortcut == null && butcherProfileId > 0) {
+            ControlsProfile butcherProfile = inputControlsManager.getProfile(butcherProfileId);
+            if (butcherProfile != null) showInputControls(butcherProfile);
+        }
+
         if (MainActivity.DEBUG_MODE) rootView.addView(AppUtils.createDebugMsgTextView(this));
         AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
     }

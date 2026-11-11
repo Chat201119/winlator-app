@@ -22,18 +22,26 @@
         android:isGame="true"
         android:extractNativeLibs="true"
         android:allowAudioPlaybackCapture="true"
-        android:label="@string/app_name">
+        android:label="${appLabel}">
 
-        <activity android:name="com.winlator.MainActivity"
-            android:theme="@style/AppThemeDark"
+        <!-- The Butcher Creeks menu is the only launcher entry now. -->
+        <activity android:name="com.winlator.butcher.MenuActivity"
+            android:theme="@style/ButcherTheme"
             android:exported="true"
-            android:screenOrientation="sensor"
+            android:screenOrientation="sensorLandscape"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Winlator's own screens stay in the app but are no longer shown to the player. -->
+        <activity android:name="com.winlator.MainActivity"
+            android:theme="@style/AppThemeDark"
+            android:exported="false"
+            android:screenOrientation="sensor"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation" />
 
         <activity android:name="com.winlator.XServerDisplayActivity"
             android:exported="false"

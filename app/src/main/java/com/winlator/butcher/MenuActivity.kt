@@ -1,0 +1,608 @@
+package com.winlator.butcher
+
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.provider.OpenableColumns
+import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.math.roundToInt
+
+val BRAND_RED = Color(0xFF7A0A0A)
+val SOFT_GREY = Color(0xFFBBBBBB)
+
+class MenuActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val settings = AppSettings(this)
+
+        setContent {
+            MaterialTheme(colorScheme = darkColorScheme()) {
+                var screen by remember { mutableStateOf("home") }
+                var settingsTab by remember { mutableStateOf(0) }
+
+                // Plain dark background everywhere; only the main menu draws the picture.
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color(0xFF0B0B0B),
+                    contentColor = Color.White
+                ) {
+                    when (screen) {
+                        "home" -> HomeScreen(
+                            settings = settings,
+                            onDemo = { screen = "demo" },
+                            onSettings = { screen = "settings" },
+                            onSetup = { screen = "setup" },
+                            onQuit = { finishAffinity() }
+                        )
+                        "settings" -> SettingsScreen(
+                            settings = settings,
+                            tab = settingsTab,
+                            onTab = { settingsTab = it },
+                            onBack = { screen = "home" },
+                            onCustomize = { screen = "editor" }
+                        )
+                        "demo" -> DemoScreen(settings = settings, onBack = { screen = "home" })
+                        "setup" -> SetupScreen(settings = settings, onBack = { screen = "home" })
+                        "editor" -> TouchEditor(settings = settings, onDone = { screen = "settings" })
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------ home
+
+@Composable
+fun HomeScreen(
+    settings: AppSettings,
+    onDemo: () -> Unit,
+    onSettings: () -> Unit,
+    onSetup: () -> Unit,
+    onQuit: () -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context.findActivity()
+    var hasGame by remember { mutableStateOf(settings.hasGame()) }
+    val openImport = rememberGameImporter(settings) { hasGame = true }
+    val clock = rememberVhsClock()
+    // Changes only once a second, so the screen is not rebuilt every frame just for the counter.
+    val seconds by remember { derivedStateOf { (clock.value / 1_000_000_000L).toInt() } }
+
+    val startHint = if (!hasGame) "No game yet. Tap to import yours." else null
+
+    Box(Modifier.fillMaxSize()) {
+        VhsBackground(clock)
+        // Darker on the left so the menu text is easy to read.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color.Black.copy(alpha = 0.9f), Color.Black.copy(alpha = 0.3f))
+                    )
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .safeDrawingPadding()
+                .padding(start = 40.dp, end = 24.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "BUTCHER CREEKS",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 4.sp
+            )
+            Text(
+                "Unofficial android port ($GPU_FAMILY)",
+                fontSize = 14.sp,
+                fontStyle = FontStyle.Italic,
+                color = SOFT_GREY
+            )
+            Spacer(Modifier.height(20.dp))
+
+            MenuItem("Start Snuff", startHint) {
+                if (!hasGame) {
+                    openImport()
+                } else {
+                    // Goes straight into the game. No container screens.
+                    val message = Bridge.start(activity, settings)
+                    if (message != null) Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+            MenuItem("Borrow Demo", onClick = onDemo)
+            MenuItem("Settings", onClick = onSettings)
+            MenuItem("Quits watching", onClick = onQuit)
+        }
+
+        Text(
+            "Game setup",
+            fontSize = 12.sp,
+            color = SOFT_GREY,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .safeDrawingPadding()
+                .padding(start = 40.dp, bottom = 12.dp)
+                .clickable(onClick = onSetup)
+        )
+
+        // VHS on-screen text.
+        Text(
+            "PLAY ▶",
+            fontFamily = FontFamily.Monospace,
+            fontSize = 14.sp,
+            color = Color.White,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .safeDrawingPadding()
+                .padding(top = 12.dp, end = 24.dp)
+        )
+        Text(
+            "SP %d:%02d:%02d".format((seconds / 3600) % 10, (seconds / 60) % 60, seconds % 60),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 14.sp,
+            color = Color.White,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .safeDrawingPadding()
+                .padding(bottom = 12.dp, end = 24.dp)
+        )
+
+        // Scanlines, static and flicker on top of everything. It does not block touches.
+        VhsOverlay(clock)
+    }
+}
+
+@Composable
+fun MenuItem(label: String, hint: String? = null, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp)
+    ) {
+        Text(label, fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        if (hint != null) Text(hint, fontSize = 12.sp, color = SOFT_GREY)
+    }
+}
+
+@Composable
+fun BackLink(text: String, onClick: () -> Unit) {
+    Text(
+        text,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color(0xFFFF6B6B),
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp)
+    )
+}
+
+// -------------------------------------------------------------------------- settings
+
+@Composable
+fun SettingsScreen(
+    settings: AppSettings,
+    tab: Int,
+    onTab: (Int) -> Unit,
+    onBack: () -> Unit,
+    onCustomize: () -> Unit
+) {
+    BackHandler(onBack = onBack)
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+    ) {
+        BackLink("< Back to menu", onBack)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Display", "Audio", "Control").forEachIndexed { index, name ->
+                if (index == tab) {
+                    Button(
+                        onClick = { onTab(index) },
+                        colors = ButtonDefaults.buttonColors(containerColor = BRAND_RED)
+                    ) { Text(name) }
+                } else {
+                    OutlinedButton(onClick = { onTab(index) }) { Text(name) }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            when (tab) {
+                0 -> DisplayTab(settings)
+                1 -> AudioTab(settings)
+                else -> ControlTab(settings, onCustomize)
+            }
+            Text(
+                "Saved automatically and applied when you press Start Snuff. Not applied yet: " +
+                    "V-Sync, Music and Effect (the game system has no switch for them). " +
+                    "Boost audio may not work on every phone.",
+                fontSize = 12.sp,
+                color = SOFT_GREY
+            )
+        }
+    }
+}
+
+@Composable
+fun DisplayTab(settings: AppSettings) {
+    var resolution by remember { mutableStateOf(settings.resolution) }
+    var preset by remember { mutableStateOf(settings.graphicsPreset) }
+    var overlay by remember { mutableStateOf(settings.overlay) }
+    var vsync by remember { mutableStateOf(settings.vsync) }
+
+    ChoiceRow("Resolution", RESOLUTIONS, resolution) {
+        resolution = it
+        settings.resolution = it
+    }
+    ChoiceRow("Graphics Preset", GRAPHICS_PRESETS, preset) {
+        preset = it
+        settings.graphicsPreset = it
+    }
+    ChoiceRow("Overlay Performance", OVERLAYS, overlay) {
+        overlay = it
+        settings.overlay = it
+    }
+    ToggleRow("V-Sync", vsync) {
+        vsync = it
+        settings.vsync = it
+    }
+}
+
+@Composable
+fun AudioTab(settings: AppSettings) {
+    var master by remember { mutableStateOf(settings.masterVolume) }
+    var music by remember { mutableStateOf(settings.musicVolume) }
+    var effects by remember { mutableStateOf(settings.effectsVolume) }
+    var boost by remember { mutableStateOf(settings.boostAudio) }
+
+    PercentSliderRow("Master Sound", master, 0f..1f) {
+        master = it
+        settings.masterVolume = it
+    }
+    PercentSliderRow("Music", music, 0f..1f) {
+        music = it
+        settings.musicVolume = it
+    }
+    PercentSliderRow("Effect", effects, 0f..1f) {
+        effects = it
+        settings.effectsVolume = it
+    }
+    ToggleRow("Boost audio to 200%", boost) {
+        boost = it
+        settings.boostAudio = it
+    }
+}
+
+@Composable
+fun ControlTab(settings: AppSettings, onCustomize: () -> Unit) {
+    var touch by remember { mutableStateOf(settings.touchscreen) }
+    var sensitivity by remember { mutableStateOf(settings.sensitivity) }
+    var crouch by remember { mutableStateOf(settings.toggleCrouch) }
+    var sprint by remember { mutableStateOf(settings.toggleSprint) }
+    var holdAttack by remember { mutableStateOf(settings.toggleHoldAttack) }
+
+    ToggleRow("Touchscreen", touch) {
+        touch = it
+        settings.touchscreen = it
+    }
+    Column {
+        Text("Customize Touchscreen", style = MaterialTheme.typography.titleSmall)
+        OutlinedButton(onClick = onCustomize) { Text("Open layout editor") }
+    }
+    PercentSliderRow("Sensitivity", sensitivity, 0f..2f) {
+        sensitivity = it
+        settings.sensitivity = it
+    }
+    ToggleRow("Toggle Crouch", crouch) {
+        crouch = it
+        settings.toggleCrouch = it
+    }
+    ToggleRow("Toggle Sprint", sprint) {
+        sprint = it
+        settings.toggleSprint = it
+    }
+    ToggleRow("Toggle Hold Attack", holdAttack) {
+        holdAttack = it
+        settings.toggleHoldAttack = it
+    }
+}
+
+@Composable
+fun ChoiceRow(label: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
+    Column {
+        Text(label, style = MaterialTheme.typography.titleSmall)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { option ->
+                if (option == selected) {
+                    Button(
+                        onClick = { onSelect(option) },
+                        colors = ButtonDefaults.buttonColors(containerColor = BRAND_RED)
+                    ) { Text(option) }
+                } else {
+                    OutlinedButton(onClick = { onSelect(option) }) { Text(option) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+    ChoiceRow(label, listOf("Off", "On"), if (value) "On" else "Off") { onChange(it == "On") }
+}
+
+@Composable
+fun PercentSliderRow(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    onChange: (Float) -> Unit
+) {
+    Column {
+        Text("$label: ${(value * 100).roundToInt()}%", style = MaterialTheme.typography.titleSmall)
+        Slider(value = value, onValueChange = onChange, valueRange = range)
+    }
+}
+
+// ----------------------------------------------------------------------------- demo
+
+@Composable
+fun DemoScreen(settings: AppSettings, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    val context = LocalContext.current
+    val activity = context.findActivity()
+    var link by remember { mutableStateOf(settings.demoLink) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val busy = remember { Busy() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        BackLink("< Back to menu", onBack)
+        Text("Borrow Demo", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+        Text(
+            "Downloads the demo straight into this app, no browser needed, and sets it up as the game. " +
+                "Paste a direct https link to a demo .zip you are allowed to download. The link is remembered.",
+            fontSize = 14.sp
+        )
+        OutlinedTextField(
+            value = link,
+            onValueChange = {
+                link = it
+                settings.demoLink = it
+            },
+            label = { Text("Direct download link (https://...)") },
+            singleLine = true,
+            modifier = Modifier
+                .widthIn(max = 520.dp)
+                .fillMaxWidth()
+        )
+        Button(
+            onClick = {
+                val trimmed = link.trim()
+                if (!trimmed.startsWith("https://")) {
+                    status = "Paste a direct https:// link to the demo .zip first."
+                } else {
+                    status = null
+                    busy.text = "Downloading..."
+                    Thread {
+                        val file = downloadInto(trimmed, settings.downloadsDir) { total ->
+                            busy.text = "Downloading... ${total / (1024 * 1024)} MB"
+                        }
+                        activity.runOnUiThread {
+                            if (file == null) {
+                                busy.clear()
+                                status = "Download failed. Check the link and your connection."
+                            } else if (!file.name.endsWith(".zip", ignoreCase = true)) {
+                                busy.clear()
+                                file.delete()
+                                status = "That link is not a .zip file."
+                            } else {
+                                Bridge.installZip(
+                                    activity, settings, busy, file.nameWithoutExtension,
+                                    { file.inputStream() }
+                                ) { error ->
+                                    file.delete()
+                                    status = error ?: "Demo ready. Go back and press Start Snuff."
+                                }
+                            }
+                        }
+                    }.start()
+                }
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = BRAND_RED)
+        ) { Text("Download demo") }
+        status?.let { Text(it, fontSize = 14.sp) }
+    }
+
+    BusyDialog(busy)
+}
+
+// ----------------------------------------------------------------------------- setup
+
+/** Shows the installed game. Reached from "Game setup" on the main menu. */
+@Composable
+fun SetupScreen(settings: AppSettings, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    val context = LocalContext.current
+    var gameName by remember { mutableStateOf(if (settings.hasGame()) settings.gameName ?: "Installed" else null) }
+    val openImport = rememberGameImporter(settings) {
+        gameName = if (settings.hasGame()) settings.gameName ?: "Installed" else null
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        BackLink("< Back to menu", onBack)
+        Text("Game setup", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+
+        Text("Game", style = MaterialTheme.typography.titleSmall)
+        Text(gameName ?: "None imported", fontSize = 14.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = openImport) {
+                Text(if (gameName == null) "Import" else "Replace")
+            }
+            if (gameName != null) {
+                OutlinedButton(onClick = {
+                    Bridge.removeGame(context, settings)
+                    gameName = null
+                }) { Text("Remove") }
+            }
+        }
+        Text(
+            "The game is copied into this app, so it uses extra storage. You can delete the original afterwards.",
+            fontSize = 12.sp,
+            color = SOFT_GREY
+        )
+    }
+}
+
+// ----------------------------------------------------------------------------- busy popup
+
+@Composable
+fun BusyDialog(busy: Busy) {
+    val text = busy.text
+    if (text != null) {
+        val percent = busy.percent
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Please wait") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(text)
+                    if (percent != null) {
+                        LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+                        Text("$percent%", fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = { }
+        )
+    }
+}
+
+fun Context.findActivity(): Activity {
+    var c: Context = this
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    error("No activity")
+}
+
+fun displayName(context: Context, uri: Uri): String {
+    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) {
+            val index = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (index >= 0) return c.getString(index)
+        }
+    }
+    return uri.lastPathSegment ?: "imported_file"
+}
+
+// --------------------------------------------------------------------------- download
+
+/** Downloads a file from an https link into [dir]. Returns the file, or null if it failed. */
+fun downloadInto(urlText: String, dir: File, onProgress: (Long) -> Unit): File? {
+    var connection: HttpURLConnection? = null
+    var dest: File? = null
+    try {
+        val url = URL(urlText)
+        if (url.protocol != "https") return null
+
+        val conn = url.openConnection() as HttpURLConnection
+        connection = conn
+        conn.connectTimeout = 15000
+        conn.readTimeout = 30000
+        conn.instanceFollowRedirects = true
+        if (conn.responseCode !in 200..299) return null
+
+        val raw = Uri.decode(url.path.substringAfterLast('/')).ifBlank { "demo_download" }
+        val target = File(dir, raw.replace(Regex("[^A-Za-z0-9._ -]"), "_"))
+        dest = target
+
+        conn.inputStream.use { source ->
+            target.outputStream().use { out ->
+                val buffer = ByteArray(65536)
+                var total = 0L
+                while (true) {
+                    val read = source.read(buffer)
+                    if (read < 0) break
+                    out.write(buffer, 0, read)
+                    total += read
+                    onProgress(total)
+                }
+            }
+        }
+        return target
+    } catch (e: Exception) {
+        dest?.delete()
+        return null
+    } finally {
+        connection?.disconnect()
+    }
+}

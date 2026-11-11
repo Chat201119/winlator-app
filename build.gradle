@@ -1,5 +1,4 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-
+// Top-level build file. Winlator's original file plus the Kotlin / Compose plugins for the menu.
 buildscript {
     repositories {
         mavenCentral()
@@ -7,9 +6,8 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:8.4.2'
-
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21'
+        classpath 'org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.0.21'
     }
 }
 
