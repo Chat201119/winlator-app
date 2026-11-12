@@ -105,7 +105,32 @@ fun HomeScreen(
     // Changes only once a second, so the screen is not rebuilt every frame just for the counter.
     val seconds by remember { derivedStateOf { (clock.value / 1_000_000_000L).toInt() } }
 
+    var showPcWarning by remember { mutableStateOf(false) }
     val startHint = if (!hasGame) "No game yet. Tap to import yours." else null
+
+
+    if (showPcWarning) {
+        AlertDialog(
+            onDismissRequest = { showPcWarning = false },
+            title = { Text("PC emulator detected") },
+            text = {
+                Text(
+                    "This looks like a PC Android emulator (for example LDPlayer), not an ARM phone. " +
+                        "The game system inside this app is built for ARM phones and normally crashes " +
+                        "on PC emulators. If you are on a PC, run the normal Windows version of the " +
+                        "game instead. You can still try starting it."
+                )
+            },
+            confirmButton = {
+                VhsButton("Start anyway") {
+                    showPcWarning = false
+                    val message = Bridge.start(activity, settings)
+                    if (message != null) Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            },
+            dismissButton = { VhsButton("Cancel") { showPcWarning = false } }
+        )
+    }
 
     Box(Modifier.fillMaxSize()) {
         VhsBackground(clock)
@@ -145,6 +170,8 @@ fun HomeScreen(
             MenuItem(if (hasGame) "Start Snuff Film" else "Start Snuff", startHint, big = true) {
                 if (!hasGame) {
                     openImport()
+                } else if (!runsOnArmPhone()) {
+                    showPcWarning = true
                 } else {
                     // Goes straight into the game. No container screens.
                     val message = Bridge.start(activity, settings)
@@ -762,3 +789,6 @@ fun DriverImportBlock(settings: AppSettings) {
     }
     BusyDialog(busy)
 }
+
+/** True on a normal ARM phone. False on PC emulators, which are x86 and only fake ARM. */
+fun runsOnArmPhone(): Boolean = android.os.Build.SUPPORTED_ABIS.firstOrNull() == "arm64-v8a"
