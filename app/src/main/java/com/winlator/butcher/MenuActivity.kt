@@ -106,6 +106,29 @@ fun HomeScreen(
     val seconds by remember { derivedStateOf { (clock.value / 1_000_000_000L).toInt() } }
 
     var showPcWarning by remember { mutableStateOf(false) }
+    var filmStep by remember { mutableStateOf(0) }
+    var filmReply by remember { mutableStateOf("") }
+
+    // Goes straight into the game. No container screens.
+    fun startFilm() {
+        if (!runsOnArmPhone()) {
+            showPcWarning = true
+        } else {
+            val message = Bridge.start(activity, settings)
+            if (message != null) Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    LaunchedEffect(filmStep) {
+        if (filmStep == FILM_REPLY) {
+            delay(2000)
+            filmStep = FILM_ASK_AGE
+        } else if (filmStep == FILM_UNDERAGE) {
+            delay(3000)
+            filmStep = 0 // nothing is remembered, so the player can answer differently next time
+            activity.finishAffinity()
+        }
+    }
     val startHint = if (!hasGame) "No game yet. Tap to import yours." else null
 
 
@@ -170,12 +193,10 @@ fun HomeScreen(
             MenuItem(if (hasGame) "Start Snuff Film" else "Start Snuff", startHint, big = true) {
                 if (!hasGame) {
                     openImport()
-                } else if (!runsOnArmPhone()) {
-                    showPcWarning = true
+                } else if (settings.questionBeforeFilm) {
+                    filmStep = FILM_ASK_COMPANY
                 } else {
-                    // Goes straight into the game. No container screens.
-                    val message = Bridge.start(activity, settings)
-                    if (message != null) Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    startFilm()
                 }
             }
             MenuItem("Borrow Demo", onClick = onDemo)
@@ -276,6 +297,16 @@ fun HomeScreen(
         )
 
         // Scanlines, static and flicker on top of everything. It does not block touches.
+        FilmOverlay(
+            step = filmStep,
+            reply = filmReply,
+            onAlone = { filmReply = "Yeah!, that the spirits of HUNTER!"; filmStep = FILM_REPLY },
+            onWithOthers = { filmReply = "Aw, you ruined the fun"; filmStep = FILM_REPLY },
+            onOver16 = { filmStep = 0; startFilm() },
+            onUnder16 = { filmStep = FILM_UNDERAGE },
+            onCancel = { filmStep = 0 }
+        )
+
         VhsOverlay(clock)
     }
 }
@@ -415,6 +446,11 @@ fun DisplayTab(settings: AppSettings) {
     ToggleRow("V-Sync", vsync) {
         vsync = it
         settings.vsync = it
+    }
+    var questions by remember { mutableStateOf(settings.questionBeforeFilm) }
+    ToggleRow("Question Before Film", questions) {
+        questions = it
+        settings.questionBeforeFilm = it
     }
 }
 

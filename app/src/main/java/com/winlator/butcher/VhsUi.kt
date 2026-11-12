@@ -117,7 +117,7 @@ fun VhsButton(text: String, selected: Boolean = false, modifier: Modifier = Modi
             .background(if (selected) BRAND_RED else Color(0x88000000), shape)
             .border(1.dp, if (selected) Color(0xFFFF6B6B) else Color(0x99FFFFFF), shape)
             .vhsClickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(

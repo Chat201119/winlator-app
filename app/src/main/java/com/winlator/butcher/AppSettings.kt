@@ -136,6 +136,11 @@ class AppSettings(private val context: Context) {
         get() = prefs.getBoolean("toggleSprint", false)
         set(value) { prefs.edit().putBoolean("toggleSprint", value).apply() }
 
+    /** Ask the "watch alone?" and "over 16?" questions every time before the game starts. */
+    var questionBeforeFilm: Boolean
+        get() = prefs.getBoolean("questionBeforeFilm", true)
+        set(value) { prefs.edit().putBoolean("questionBeforeFilm", value).apply() }
+
     var toggleHoldAttack: Boolean
         get() = prefs.getBoolean("toggleHoldAttack", false)
         set(value) { prefs.edit().putBoolean("toggleHoldAttack", value).apply() }
