@@ -299,6 +299,12 @@ fun DisplayTab(settings: AppSettings) {
     var overlay by remember { mutableStateOf(settings.overlay) }
     var vsync by remember { mutableStateOf(settings.vsync) }
     var driver by remember { mutableStateOf(settings.graphicsDriver) }
+    var renderer by remember { mutableStateOf(settings.renderer) }
+
+    ChoiceRow("Renderer (Vulkan or OpenGL)", RENDERERS, renderer) {
+        renderer = it
+        settings.renderer = it
+    }
 
     ChoiceRow("Graphics Driver", GRAPHICS_DRIVERS, driver) {
         driver = it

@@ -12,6 +12,7 @@ import androidx.preference.PreferenceManager
 import com.winlator.XServerDisplayActivity
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
+import com.winlator.container.DXWrappers
 import com.winlator.core.AppUtils
 import com.winlator.core.Callback
 import com.winlator.core.DefaultVersion
@@ -191,7 +192,9 @@ object Bridge {
             "Vortek" -> "vortek"
             else -> if (GPU_FAMILY == "Snapdragon") "turnip" else "vortek"
         }
-        container.setGraphicsDriver("$vulkan,gladio")
+        val openGl = s.renderer == "OpenGL"
+        container.setGraphicsDriver(if (openGl) "$vulkan,virgl" else "$vulkan,gladio")
+        container.setDXWrapper(if (openGl) DXWrappers.WINED3D else DXWrappers.DXVK)
 
         container.setHUDMode(
             when (s.overlay) {
@@ -214,7 +217,7 @@ object Bridge {
         container.setBox64Preset(box64)
 
         val dxConfig = container.getDXWrapperConfig()
-        if (!dxConfig.contains("|")) {
+        if (!openGl && !dxConfig.contains("|")) {
             container.setDXWrapperConfig(KeyValueSet(dxConfig).put("framerate", fpsCap).toString())
         }
 

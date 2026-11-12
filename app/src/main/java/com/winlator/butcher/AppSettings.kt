@@ -8,6 +8,7 @@ val RESOLUTIONS = listOf("Native", "1080p", "720p", "480p")
 val GRAPHICS_PRESETS = listOf("Battery Performance", "Low", "Medium", "High", "Quality")
 val OVERLAYS = listOf("Off", "FPS", "FULL")
 val GRAPHICS_DRIVERS = listOf("Auto", "Turnip", "Vortek")
+val RENDERERS = listOf("Vulkan", "OpenGL")
 
 /** Which build this is: "Snapdragon" or "Mali". Set per build version in Gradle. */
 val GPU_FAMILY: String = BuildConfig.GPU_FAMILY
@@ -73,6 +74,14 @@ class AppSettings(private val context: Context) {
             return if (v in GRAPHICS_DRIVERS) v else "Auto"
         }
         set(value) { prefs.edit().putString("graphicsDriver", value).apply() }
+
+    /** Vulkan = DXVK (fast). OpenGL = WineD3D over the phone's OpenGL (slower, avoids Vulkan). */
+    var renderer: String
+        get() {
+            val v = prefs.getString("renderer", "Vulkan") ?: "Vulkan"
+            return if (v in RENDERERS) v else "Vulkan"
+        }
+        set(value) { prefs.edit().putString("renderer", value).apply() }
 
     var overlay: String
         get() {
