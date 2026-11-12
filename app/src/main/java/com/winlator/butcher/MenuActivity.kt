@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -139,7 +140,7 @@ fun HomeScreen(
             )
             Spacer(Modifier.height(20.dp))
 
-            MenuItem("Start Snuff", startHint) {
+            MenuItem("Start Snuff", startHint, big = true) {
                 if (!hasGame) {
                     openImport()
                 } else {
@@ -161,7 +162,7 @@ fun HomeScreen(
                 .align(Alignment.BottomStart)
                 .safeDrawingPadding()
                 .padding(start = 40.dp, bottom = 12.dp)
-                .clickable(onClick = onSetup)
+                .vhsClickable(onClick = onSetup)
         )
 
         // VHS on-screen text.
@@ -192,27 +193,45 @@ fun HomeScreen(
 }
 
 @Composable
-fun MenuItem(label: String, hint: String? = null, onClick: () -> Unit) {
+fun MenuItem(label: String, hint: String? = null, big: Boolean = false, onClick: () -> Unit) {
     Column(
         Modifier
-            .clickable(onClick = onClick)
+            .vhsClickable(big = big, onClick = onClick)
             .padding(vertical = 6.dp)
     ) {
-        Text(label, fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        if (hint != null) Text(hint, fontSize = 12.sp, color = SOFT_GREY)
+        Text(
+            label.uppercase(),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp
+        )
+        if (hint != null) Text(hint, fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = SOFT_GREY)
     }
 }
 
 @Composable
 fun BackLink(text: String, onClick: () -> Unit) {
     Text(
-        text,
-        fontSize = 16.sp,
+        text.uppercase(),
+        fontFamily = FontFamily.Monospace,
+        fontSize = 15.sp,
         fontWeight = FontWeight.Bold,
         color = Color(0xFFFF6B6B),
         modifier = Modifier
-            .clickable(onClick = onClick)
+            .vhsClickable(onClick = onClick)
             .padding(vertical = 8.dp)
+    )
+}
+
+@Composable
+fun ScreenTitle(text: String) {
+    Text(
+        text.uppercase(),
+        fontFamily = FontFamily.Monospace,
+        fontSize = 26.sp,
+        fontWeight = FontWeight.Black,
+        letterSpacing = 4.sp
     )
 }
 
@@ -228,48 +247,47 @@ fun SettingsScreen(
 ) {
     BackHandler(onBack = onBack)
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .padding(horizontal = 24.dp, vertical = 8.dp)
-    ) {
-        BackLink("< Back to menu", onBack)
+    VhsFrame {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = 28.dp, vertical = 8.dp)
+        ) {
+            BackLink("< Back to menu", onBack)
+            ScreenTitle("Options")
+            Spacer(Modifier.height(8.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Display", "Audio", "Control").forEachIndexed { index, name ->
-                if (index == tab) {
-                    Button(
-                        onClick = { onTab(index) },
-                        colors = ButtonDefaults.buttonColors(containerColor = BRAND_RED)
-                    ) { Text(name) }
-                } else {
-                    OutlinedButton(onClick = { onTab(index) }) { Text(name) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Display", "Audio", "Control").forEachIndexed { index, name ->
+                    VhsButton(name, selected = index == tab) { onTab(index) }
                 }
             }
-        }
 
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            when (tab) {
-                0 -> DisplayTab(settings)
-                1 -> AudioTab(settings)
-                else -> ControlTab(settings, onCustomize)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                when (tab) {
+                    0 -> DisplayTab(settings)
+                    1 -> AudioTab(settings)
+                    else -> ControlTab(settings, onCustomize)
+                }
+                Text(
+                    "Saved automatically and applied when you press Start Snuff. Not applied yet: " +
+                        "V-Sync, Music and Effect (the game system has no switch for them). " +
+                        "Boost audio may not work on every phone.",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    color = SOFT_GREY
+                )
+                Spacer(Modifier.height(24.dp))
             }
-            Text(
-                "Saved automatically and applied when you press Start Snuff. Not applied yet: " +
-                    "V-Sync, Music and Effect (the game system has no switch for them). " +
-                    "Boost audio may not work on every phone.",
-                fontSize = 12.sp,
-                color = SOFT_GREY
-            )
         }
     }
 }
@@ -280,7 +298,12 @@ fun DisplayTab(settings: AppSettings) {
     var preset by remember { mutableStateOf(settings.graphicsPreset) }
     var overlay by remember { mutableStateOf(settings.overlay) }
     var vsync by remember { mutableStateOf(settings.vsync) }
+    var driver by remember { mutableStateOf(settings.graphicsDriver) }
 
+    ChoiceRow("Graphics Driver", GRAPHICS_DRIVERS, driver) {
+        driver = it
+        settings.graphicsDriver = it
+    }
     ChoiceRow("Resolution", RESOLUTIONS, resolution) {
         resolution = it
         settings.resolution = it
@@ -328,7 +351,6 @@ fun AudioTab(settings: AppSettings) {
 fun ControlTab(settings: AppSettings, onCustomize: () -> Unit) {
     var touch by remember { mutableStateOf(settings.touchscreen) }
     var sensitivity by remember { mutableStateOf(settings.sensitivity) }
-    var crouch by remember { mutableStateOf(settings.toggleCrouch) }
     var sprint by remember { mutableStateOf(settings.toggleSprint) }
     var holdAttack by remember { mutableStateOf(settings.toggleHoldAttack) }
 
@@ -336,17 +358,12 @@ fun ControlTab(settings: AppSettings, onCustomize: () -> Unit) {
         touch = it
         settings.touchscreen = it
     }
-    Column {
-        Text("Customize Touchscreen", style = MaterialTheme.typography.titleSmall)
-        OutlinedButton(onClick = onCustomize) { Text("Open layout editor") }
+    OptionBlock("Customize Touchscreen") {
+        VhsButton("Open layout editor", onClick = onCustomize)
     }
     PercentSliderRow("Sensitivity", sensitivity, 0f..2f) {
         sensitivity = it
         settings.sensitivity = it
-    }
-    ToggleRow("Toggle Crouch", crouch) {
-        crouch = it
-        settings.toggleCrouch = it
     }
     ToggleRow("Toggle Sprint", sprint) {
         sprint = it
@@ -358,23 +375,37 @@ fun ControlTab(settings: AppSettings, onCustomize: () -> Unit) {
     }
 }
 
+/** One option: a red marker, a monospace label, and the controls underneath. */
+@Composable
+fun OptionBlock(label: String, content: @Composable () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(Color(0x66000000), RoundedCornerShape(2.dp))
+            .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            "▌" + label.uppercase(),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = Color(0xFFFF6B6B)
+        )
+        content()
+    }
+}
+
 @Composable
 fun ChoiceRow(label: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
-    Column {
-        Text(label, style = MaterialTheme.typography.titleSmall)
+    OptionBlock(label) {
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             options.forEach { option ->
-                if (option == selected) {
-                    Button(
-                        onClick = { onSelect(option) },
-                        colors = ButtonDefaults.buttonColors(containerColor = BRAND_RED)
-                    ) { Text(option) }
-                } else {
-                    OutlinedButton(onClick = { onSelect(option) }) { Text(option) }
-                }
+                VhsButton(option, selected = option == selected) { onSelect(option) }
             }
         }
     }
@@ -392,9 +423,17 @@ fun PercentSliderRow(
     range: ClosedFloatingPointRange<Float>,
     onChange: (Float) -> Unit
 ) {
-    Column {
-        Text("$label: ${(value * 100).roundToInt()}%", style = MaterialTheme.typography.titleSmall)
-        Slider(value = value, onValueChange = onChange, valueRange = range)
+    OptionBlock("$label  ${(value * 100).roundToInt()}%") {
+        Slider(
+            value = value,
+            onValueChange = onChange,
+            valueRange = range,
+            colors = SliderDefaults.colors(
+                thumbColor = Color(0xFFFF6B6B),
+                activeTrackColor = BRAND_RED,
+                inactiveTrackColor = Color(0x55FFFFFF)
+            )
+        )
     }
 }
 
@@ -409,35 +448,36 @@ fun DemoScreen(settings: AppSettings, onBack: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     val busy = remember { Busy() }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        BackLink("< Back to menu", onBack)
-        Text("Borrow Demo", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-        Text(
-            "Downloads the demo straight into this app, no browser needed, and sets it up as the game. " +
-                "Paste a direct https link to a demo .zip you are allowed to download. The link is remembered.",
-            fontSize = 14.sp
-        )
-        OutlinedTextField(
-            value = link,
-            onValueChange = {
-                link = it
-                settings.demoLink = it
-            },
-            label = { Text("Direct download link (https://...)") },
-            singleLine = true,
+    VhsFrame {
+        Column(
             modifier = Modifier
-                .widthIn(max = 520.dp)
-                .fillMaxWidth()
-        )
-        Button(
-            onClick = {
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            BackLink("< Back to menu", onBack)
+            ScreenTitle("Borrow Demo")
+            Text(
+                "Downloads the demo straight into this app, no browser needed, and sets it up as the game. " +
+                    "Paste a direct https link to a demo .zip you are allowed to download. The link is remembered.",
+                fontFamily = FontFamily.Monospace,
+                fontSize = 13.sp
+            )
+            OutlinedTextField(
+                value = link,
+                onValueChange = {
+                    link = it
+                    settings.demoLink = it
+                },
+                label = { Text("Direct download link (https://...)") },
+                singleLine = true,
+                modifier = Modifier
+                    .widthIn(max = 520.dp)
+                    .fillMaxWidth()
+            )
+            VhsButton("Download demo", selected = true) {
                 val trimmed = link.trim()
                 if (!trimmed.startsWith("https://")) {
                     status = "Paste a direct https:// link to the demo .zip first."
@@ -468,10 +508,9 @@ fun DemoScreen(settings: AppSettings, onBack: () -> Unit) {
                         }
                     }.start()
                 }
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = BRAND_RED)
-        ) { Text("Download demo") }
-        status?.let { Text(it, fontSize = 14.sp) }
+            }
+            status?.let { Text(it, fontFamily = FontFamily.Monospace, fontSize = 13.sp) }
+        }
     }
 
     BusyDialog(busy)
@@ -489,35 +528,37 @@ fun SetupScreen(settings: AppSettings, onBack: () -> Unit) {
         gameName = if (settings.hasGame()) settings.gameName ?: "Installed" else null
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        BackLink("< Back to menu", onBack)
-        Text("Game setup", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+    VhsFrame {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            BackLink("< Back to menu", onBack)
+            ScreenTitle("Game setup")
 
-        Text("Game", style = MaterialTheme.typography.titleSmall)
-        Text(gameName ?: "None imported", fontSize = 14.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = openImport) {
-                Text(if (gameName == null) "Import" else "Replace")
+            OptionBlock("Game") {
+                Text(gameName ?: "None imported", fontFamily = FontFamily.Monospace, fontSize = 14.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    VhsButton(if (gameName == null) "Import" else "Replace", onClick = openImport)
+                    if (gameName != null) {
+                        VhsButton("Remove") {
+                            Bridge.removeGame(context, settings)
+                            gameName = null
+                        }
+                    }
+                }
             }
-            if (gameName != null) {
-                OutlinedButton(onClick = {
-                    Bridge.removeGame(context, settings)
-                    gameName = null
-                }) { Text("Remove") }
-            }
+            Text(
+                "The game is copied into this app, so it uses extra storage. You can delete the original afterwards.",
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
+                color = SOFT_GREY
+            )
         }
-        Text(
-            "The game is copied into this app, so it uses extra storage. You can delete the original afterwards.",
-            fontSize = 12.sp,
-            color = SOFT_GREY
-        )
     }
 }
 

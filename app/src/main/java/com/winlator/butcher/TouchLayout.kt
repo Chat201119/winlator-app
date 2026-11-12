@@ -54,9 +54,6 @@ val TOUCH_ITEMS = listOf(
     TouchItem("attack", "ATTACK", 0.72f, 0.80f, 1.3f),
     TouchItem("aim", "AIM", 0.72f, 0.56f, 0.9f),
     TouchItem("use", "USE", 0.60f, 0.80f, 0.9f),
-    TouchItem("reload", "RELOAD", 0.60f, 0.58f, 0.8f),
-    TouchItem("jump", "JUMP", 0.93f, 0.42f, 1.0f),
-    TouchItem("crouch", "CROUCH", 0.93f, 0.22f, 0.9f),
     TouchItem("pause", "PAUSE", 0.50f, 0.08f, 0.7f)
 )
 
@@ -160,24 +157,21 @@ fun TouchEditor(settings: AppSettings, onDone: () -> Unit) {
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = {
+                VhsButton("Reset this") {
                     xs[current.key] = current.defX
                     ys[current.key] = current.defY
                     scales[current.key] = current.defScale
-                }) { Text("Reset this") }
+                }
 
-                OutlinedButton(onClick = {
+                VhsButton("Reset all") {
                     TOUCH_ITEMS.forEach {
                         xs[it.key] = it.defX
                         ys[it.key] = it.defY
                         scales[it.key] = it.defScale
                     }
-                }) { Text("Reset all") }
+                }
 
-                Button(
-                    onClick = { finish() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7A0A0A))
-                ) { Text("Done") }
+                VhsButton("Done", selected = true) { finish() }
             }
         }
     }

@@ -7,6 +7,7 @@ import java.io.File
 val RESOLUTIONS = listOf("Native", "1080p", "720p", "480p")
 val GRAPHICS_PRESETS = listOf("Battery Performance", "Low", "Medium", "High", "Quality")
 val OVERLAYS = listOf("Off", "FPS", "FULL")
+val GRAPHICS_DRIVERS = listOf("Auto", "Turnip", "Vortek")
 
 /** Which build this is: "Snapdragon" or "Mali". Set per build version in Gradle. */
 val GPU_FAMILY: String = BuildConfig.GPU_FAMILY
@@ -65,6 +66,13 @@ class AppSettings(private val context: Context) {
             return if (v in GRAPHICS_PRESETS) v else DEFAULT_PRESET
         }
         set(value) { prefs.edit().putString("graphicsPreset", value).apply() }
+
+    var graphicsDriver: String
+        get() {
+            val v = prefs.getString("graphicsDriver", "Auto") ?: "Auto"
+            return if (v in GRAPHICS_DRIVERS) v else "Auto"
+        }
+        set(value) { prefs.edit().putString("graphicsDriver", value).apply() }
 
     var overlay: String
         get() {

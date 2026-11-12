@@ -184,6 +184,15 @@ object Bridge {
     private fun applySettings(context: Context, container: Container, s: AppSettings) {
         container.setScreenSize(screenSizeFor(context, s.resolution))
 
+        // Graphics Driver: Auto uses Turnip on Snapdragon (full Vulkan, what DirectX 11 games need)
+        // and Vortek on Mali.
+        val vulkan = when (s.graphicsDriver) {
+            "Turnip" -> "turnip"
+            "Vortek" -> "vortek"
+            else -> if (GPU_FAMILY == "Snapdragon") "turnip" else "vortek"
+        }
+        container.setGraphicsDriver("$vulkan,gladio")
+
         container.setHUDMode(
             when (s.overlay) {
                 "FPS" -> FrameRating.Mode.SIMPLE.ordinal
@@ -398,14 +407,11 @@ object Bridge {
         }
 
         val elements = JSONArray()
-        add(elements, "move", "D_PAD", "CIRCLE", listOf("KEY_W", "KEY_D", "KEY_S", "KEY_A"), false, "", 0.55f)
+        add(elements, "move", "STICK", "CIRCLE", listOf("KEY_W", "KEY_D", "KEY_S", "KEY_A"), false, "", 0.55f)
         add(elements, "sprint", "BUTTON", "CIRCLE", listOf("KEY_SHIFT_L"), s.toggleSprint, "SPRINT", 0.85f)
         add(elements, "attack", "BUTTON", "CIRCLE", listOf("MOUSE_LEFT_BUTTON"), s.toggleHoldAttack, "ATTACK", 0.75f)
         add(elements, "aim", "BUTTON", "CIRCLE", listOf("MOUSE_RIGHT_BUTTON"), false, "AIM", 0.85f)
         add(elements, "use", "BUTTON", "CIRCLE", listOf("KEY_E"), false, "USE", 0.85f)
-        add(elements, "reload", "BUTTON", "CIRCLE", listOf("KEY_R"), false, "RELOAD", 0.85f)
-        add(elements, "jump", "BUTTON", "CIRCLE", listOf("KEY_SPACE"), false, "JUMP", 0.85f)
-        add(elements, "crouch", "BUTTON", "CIRCLE", listOf("KEY_CTRL_L"), s.toggleCrouch, "CROUCH", 0.85f)
         add(elements, "pause", "BUTTON", "ROUND_RECT", listOf("KEY_ESC"), false, "PAUSE", 0.85f)
 
         val profile = JSONObject()

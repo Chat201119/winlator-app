@@ -97,20 +97,12 @@ fun ImportChoiceDialog(onZip: () -> Unit, onFolder: () -> Unit, onDismiss: () ->
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("What are you importing?")
-                Button(
-                    onClick = onZip,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = BRAND_RED)
-                ) { Text(".zip") }
-                Button(
-                    onClick = onFolder,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = BRAND_RED)
-                ) { Text("Folder") }
+                VhsButton(".zip", selected = true, modifier = Modifier.fillMaxWidth(), onClick = onZip)
+                VhsButton("Folder", selected = true, modifier = Modifier.fillMaxWidth(), onClick = onFolder)
             }
         },
         confirmButton = { },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { VhsButton("Cancel", onClick = onDismiss) }
     )
 }
 
