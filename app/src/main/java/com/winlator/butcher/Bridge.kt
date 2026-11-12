@@ -17,6 +17,7 @@ import com.winlator.core.AppUtils
 import com.winlator.core.Callback
 import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
+import com.winlator.core.GeneralComponents
 import com.winlator.core.KeyValueSet
 import com.winlator.core.TarCompressorUtils
 import com.winlator.core.WineInfo
@@ -175,6 +176,8 @@ object Bridge {
         "1080p" -> "1920x1080"
         "720p" -> "1280x720"
         "480p" -> "854x480"
+        "360p" -> "640x360"
+        "240p" -> "426x240"
         else -> {
             val dm = context.resources.displayMetrics
             "${max(dm.widthPixels, dm.heightPixels)}x${min(dm.widthPixels, dm.heightPixels)}"
@@ -192,8 +195,17 @@ object Bridge {
             "Vortek" -> "vortek"
             else -> if (GPU_FAMILY == "Snapdragon") "turnip" else "vortek"
         }
+        // An imported Adreno driver is used through Vortek (unless Turnip was picked by hand).
+        val customDriver = s.driverName?.takeIf {
+            File(GeneralComponents.getComponentDir(GeneralComponents.Type.ADRENOTOOLS_DRIVER, context), it).isDirectory
+        }
+        val useCustom = customDriver != null && s.graphicsDriver != "Turnip"
         val openGl = s.renderer == "OpenGL"
-        container.setGraphicsDriver(if (openGl) "$vulkan,virgl" else "$vulkan,gladio")
+        val vulkanFinal = if (useCustom) "vortek" else vulkan
+        container.setGraphicsDriver(if (openGl) "$vulkanFinal,virgl" else "$vulkanFinal,gladio")
+        container.setGraphicsDriverConfig(
+            if (useCustom) KeyValueSet("").put("adrenotoolsDriver", customDriver).toString() else ""
+        )
         container.setDXWrapper(if (openGl) DXWrappers.WINED3D else DXWrappers.DXVK)
 
         container.setHUDMode(
@@ -371,6 +383,62 @@ object Bridge {
         }
     }
 
+    /** Imports an Adreno driver .zip (the kind with a .json file and a .so file inside). */
+    fun installDriver(
+        activity: Activity, settings: AppSettings, busy: Busy, name: String,
+        open: () -> InputStream?, onDone: (String?) -> Unit
+    ) {
+        busy.text = "Importing the driver..."
+        Thread {
+            val tmp = File(activity.cacheDir, "driver_tmp")
+            var error: String? = null
+            try {
+                FileUtils.delete(tmp)
+                tmp.mkdirs()
+                val input = open()
+                if (input == null) {
+                    error = "Could not read that file."
+                } else {
+                    unzipInto(input, tmp, busy)
+                    val manifest = tmp.walkTopDown().firstOrNull { f ->
+                        f.isFile && f.extension.equals("json", true) &&
+                            try { JSONObject(f.readText()).has("libraryName") } catch (e: Exception) { false }
+                    }
+                    if (manifest == null) {
+                        error = "That zip is not an Adreno driver (no file with a libraryName inside)."
+                    } else {
+                        val safe = name.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "driver" }
+                        val dest = File(
+                            GeneralComponents.getComponentDir(GeneralComponents.Type.ADRENOTOOLS_DRIVER, activity), safe
+                        )
+                        FileUtils.delete(dest)
+                        manifest.parentFile!!.copyRecursively(dest, overwrite = true)
+                        settings.driverName?.takeIf { it != safe }?.let {
+                            FileUtils.delete(File(dest.parentFile, it))
+                        }
+                        settings.driverName = safe
+                    }
+                }
+            } catch (e: Exception) {
+                error = "Importing failed: ${e.message}"
+            }
+            FileUtils.delete(tmp)
+            activity.runOnUiThread {
+                busy.clear()
+                onDone(error)
+            }
+        }.start()
+    }
+
+    fun removeDriver(context: Context, settings: AppSettings) {
+        settings.driverName?.let {
+            FileUtils.delete(
+                File(GeneralComponents.getComponentDir(GeneralComponents.Type.ADRENOTOOLS_DRIVER, context), it)
+            )
+        }
+        settings.driverName = null
+    }
+
     fun removeGame(context: Context, settings: AppSettings) {
         ContainerManager(context).getContainerById(settings.containerId)?.let { FileUtils.delete(gameDir(it)) }
         settings.clearGame()
@@ -415,6 +483,8 @@ object Bridge {
         add(elements, "attack", "BUTTON", "CIRCLE", listOf("MOUSE_LEFT_BUTTON"), s.toggleHoldAttack, "ATTACK", 0.75f)
         add(elements, "aim", "BUTTON", "CIRCLE", listOf("MOUSE_RIGHT_BUTTON"), false, "AIM", 0.85f)
         add(elements, "use", "BUTTON", "CIRCLE", listOf("KEY_E"), false, "USE", 0.85f)
+        add(elements, "throw", "BUTTON", "CIRCLE", listOf("KEY_R"), false, "THROW", 0.85f)
+        add(elements, "kick", "BUTTON", "CIRCLE", listOf("KEY_F"), false, "KICK", 0.85f)
         add(elements, "pause", "BUTTON", "ROUND_RECT", listOf("KEY_ESC"), false, "PAUSE", 0.85f)
 
         val profile = JSONObject()

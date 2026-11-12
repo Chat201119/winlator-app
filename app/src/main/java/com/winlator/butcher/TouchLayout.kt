@@ -54,6 +54,8 @@ val TOUCH_ITEMS = listOf(
     TouchItem("attack", "ATTACK", 0.72f, 0.80f, 1.3f),
     TouchItem("aim", "AIM", 0.72f, 0.56f, 0.9f),
     TouchItem("use", "USE", 0.60f, 0.80f, 0.9f),
+    TouchItem("throw", "THROW", 0.89f, 0.52f, 0.9f),
+    TouchItem("kick", "KICK", 0.89f, 0.78f, 0.9f),
     TouchItem("pause", "PAUSE", 0.50f, 0.08f, 0.7f)
 )
 

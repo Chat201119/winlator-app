@@ -3,6 +3,8 @@ package com.winlator.butcher
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
+import kotlinx.coroutines.delay
 import android.provider.OpenableColumns
 import android.net.Uri
 import android.os.Bundle
@@ -140,7 +142,7 @@ fun HomeScreen(
             )
             Spacer(Modifier.height(20.dp))
 
-            MenuItem("Start Snuff", startHint, big = true) {
+            MenuItem(if (hasGame) "Start Snuff Film" else "Start Snuff", startHint, big = true) {
                 if (!hasGame) {
                     openImport()
                 } else {
@@ -164,6 +166,65 @@ fun HomeScreen(
                 .padding(start = 40.dp, bottom = 12.dp)
                 .vhsClickable(onClick = onSetup)
         )
+
+        // Small credits on the right side.
+        var noteKey by remember { mutableStateOf(0) }
+        var showNote by remember { mutableStateOf(false) }
+        LaunchedEffect(noteKey) {
+            if (noteKey > 0) {
+                showNote = true
+                delay(5000)
+                showNote = false
+            }
+        }
+        fun open(url: String) {
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            } catch (e: Exception) {
+                Toast.makeText(context, "No browser found.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .safeDrawingPadding()
+                .padding(end = 24.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text("CREDITS", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = Color(0xFFFF6B6B))
+            listOf(
+                "David Szymanski" to { open("https://steamcommunity.com/groups/davidszymanski") },
+                "CLAUDE" to { open("https://claude.ai") },
+                "Chat201119" to { noteKey++; Unit },
+                "Winlator" to { open("https://github.com/brunodev85/winlator") }
+            ).forEach { (label, action) ->
+                Text(
+                    label,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    color = SOFT_GREY,
+                    modifier = Modifier
+                        .vhsClickable(onClick = action)
+                        .padding(vertical = 2.dp)
+                )
+            }
+        }
+        if (showNote) {
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .background(Color(0xDD000000), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    "this is useless guy so don't care about him",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 16.sp,
+                    color = Color.White
+                )
+            }
+        }
 
         // VHS on-screen text.
         Text(
@@ -300,6 +361,8 @@ fun DisplayTab(settings: AppSettings) {
     var vsync by remember { mutableStateOf(settings.vsync) }
     var driver by remember { mutableStateOf(settings.graphicsDriver) }
     var renderer by remember { mutableStateOf(settings.renderer) }
+
+    DriverImportBlock(settings)
 
     ChoiceRow("Renderer (Vulkan or OpenGL)", RENDERERS, renderer) {
         renderer = it
@@ -652,4 +715,50 @@ fun downloadInto(urlText: String, dir: File, onProgress: (Long) -> Unit): File? 
     } finally {
         connection?.disconnect()
     }
+}
+
+
+/** Import / remove an Adreno driver .zip. Only Snapdragon (Adreno) phones can use it. */
+@Composable
+fun DriverImportBlock(settings: AppSettings) {
+    val context = LocalContext.current
+    val activity = context.findActivity()
+    var name by remember { mutableStateOf(settings.driverName) }
+    val busy = remember { Busy() }
+
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            val picked = displayName(context, uri)
+            if (!picked.endsWith(".zip", ignoreCase = true)) {
+                Toast.makeText(context, "That is not a .zip file.", Toast.LENGTH_LONG).show()
+            } else {
+                Bridge.installDriver(
+                    activity, settings, busy, picked.removeSuffix(".zip"),
+                    { context.contentResolver.openInputStream(uri) }
+                ) { error ->
+                    if (error != null) Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                    name = settings.driverName
+                }
+            }
+        }
+    }
+
+    OptionBlock("Import Driver (Snapdragon only)") {
+        Text(
+            name ?: "None imported",
+            fontFamily = FontFamily.Monospace,
+            fontSize = 12.sp,
+            color = SOFT_GREY
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            VhsButton(if (name == null) "Import driver .zip" else "Replace driver") { picker.launch(arrayOf("*/*")) }
+            if (name != null) {
+                VhsButton("Remove") {
+                    Bridge.removeDriver(context, settings)
+                    name = null
+                }
+            }
+        }
+    }
+    BusyDialog(busy)
 }

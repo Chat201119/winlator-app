@@ -4,7 +4,7 @@ import android.content.Context
 import com.winlator.BuildConfig
 import java.io.File
 
-val RESOLUTIONS = listOf("Native", "1080p", "720p", "480p")
+val RESOLUTIONS = listOf("Native", "1080p", "720p", "480p", "360p", "240p")
 val GRAPHICS_PRESETS = listOf("Battery Performance", "Low", "Medium", "High", "Quality")
 val OVERLAYS = listOf("Off", "FPS", "FULL")
 val GRAPHICS_DRIVERS = listOf("Auto", "Turnip", "Vortek")
@@ -40,6 +40,11 @@ class AppSettings(private val context: Context) {
     var gameName: String?
         get() = prefs.getString("gameName", null)
         set(value) { prefs.edit().putString("gameName", value).apply() }
+
+    /** Name of the imported Adreno driver (folder in Winlator's installed components), or null. */
+    var driverName: String?
+        get() = prefs.getString("driverName", null)
+        set(value) { prefs.edit().putString("driverName", value).apply() }
 
     var demoLink: String
         get() = prefs.getString("demoLink", "") ?: ""
