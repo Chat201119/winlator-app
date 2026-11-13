@@ -2,6 +2,7 @@ package com.winlator.butcher
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -232,16 +233,13 @@ private fun Arrow(symbol: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .border(1.dp, PANEL_LINE)
-            .clickableQuiet(onClick)
+            .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(symbol, fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = OSD_RED)
     }
 }
-
-private fun Modifier.clickableQuiet(onClick: () -> Unit): Modifier =
-    this.then(Modifier.pointerInput(Unit) { detectTapGestures { onClick() } })
 
 @Composable
 fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
@@ -262,13 +260,15 @@ fun PercentSliderRow(
     var width by remember { mutableStateOf(1f) }
     var lastTick by remember { mutableStateOf(filled) }
 
+    val currentOnChange by androidx.compose.runtime.rememberUpdatedState(onChange)
+
     fun set(x: Float) {
         val fraction = (x / width).coerceIn(0f, 1f)
         val snapped = (fraction * segments).roundToInt() / segments.toFloat()
         val newValue = range.start + span * snapped
         val seg = (snapped * segments).roundToInt()
         if (seg != lastTick) { lastTick = seg; VhsSound.click() }
-        onChange(newValue)
+        currentOnChange(newValue)
     }
 
     OsdRow(label) {

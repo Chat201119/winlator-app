@@ -57,6 +57,7 @@ class MenuActivity : ComponentActivity() {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 var screen by remember { mutableStateOf("home") }
                 var settingsTab by remember { mutableStateOf(0) }
+                var quitting by remember { mutableStateOf(false) }
 
                 // Plain dark background everywhere; only the main menu draws the picture.
                 Surface(
@@ -70,7 +71,7 @@ class MenuActivity : ComponentActivity() {
                             onDemo = { screen = "demo" },
                             onSettings = { screen = "settings" },
                             onSetup = { screen = "setup" },
-                            onQuit = { finishAffinity() }
+                            onQuit = { if (!quitting) { quitting = true; Thread { VhsSound.powerOff() }.start() } }
                         )
                         "settings" -> SettingsScreen(
                             settings = settings,
@@ -83,6 +84,7 @@ class MenuActivity : ComponentActivity() {
                         "setup" -> SetupScreen(settings = settings, onBack = { screen = "home" })
                         "editor" -> TouchEditor(settings = settings, onDone = { screen = "settings" })
                     }
+                    if (quitting) TvOffOverlay { finishAffinity() }
                 }
             }
         }

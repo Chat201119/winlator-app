@@ -123,6 +123,12 @@ object VhsSound {
         play(click)
     }
 
+    private var offTrack: AudioTrack? = null
+    fun powerOff() {
+        if (offTrack == null) offTrack = build(generate(520, 2400.0, 40.0, 3.0, 0.04, 0.0))
+        play(offTrack)
+    }
+
     fun whirr() {
         if (whirr == null) whirr = build(generate(520, 210.0, 70.0, 5.0, 0.12, 0.06))
         play(whirr)
