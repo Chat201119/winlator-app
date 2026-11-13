@@ -50,6 +50,8 @@ class MenuActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val settings = AppSettings(this)
+        TapeTime.seconds() // starts the record counter
+        if (savedInstanceState == null) Thread { VhsSound.powerOn() }.start() // VHS switching on, no tape
 
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
@@ -103,7 +105,7 @@ fun HomeScreen(
     val openImport = rememberGameImporter(settings) { hasGame = true }
     val clock = rememberVhsClock()
     // Changes only once a second, so the screen is not rebuilt every frame just for the counter.
-    val seconds by remember { derivedStateOf { (clock.value / 1_000_000_000L).toInt() } }
+    val seconds by remember { derivedStateOf { clock.value; TapeTime.seconds() } }
 
     var showPcWarning by remember { mutableStateOf(false) }
     var filmStep by remember { mutableStateOf(0) }
@@ -357,61 +359,6 @@ fun ScreenTitle(text: String) {
 // -------------------------------------------------------------------------- settings
 
 @Composable
-fun SettingsScreen(
-    settings: AppSettings,
-    tab: Int,
-    onTab: (Int) -> Unit,
-    onBack: () -> Unit,
-    onCustomize: () -> Unit
-) {
-    BackHandler(onBack = onBack)
-
-    VhsFrame {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .safeDrawingPadding()
-                .padding(horizontal = 28.dp, vertical = 8.dp)
-        ) {
-            BackLink("< Back to menu", onBack)
-            ScreenTitle("Options")
-            Spacer(Modifier.height(8.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Display", "Audio", "Control").forEachIndexed { index, name ->
-                    VhsButton(name, selected = index == tab) { onTab(index) }
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                when (tab) {
-                    0 -> DisplayTab(settings)
-                    1 -> AudioTab(settings)
-                    else -> ControlTab(settings, onCustomize)
-                }
-                Text(
-                    "Saved automatically and applied when you press Start Snuff. Not applied yet: " +
-                        "V-Sync, Music and Effect (the game system has no switch for them). " +
-                        "Boost audio may not work on every phone.",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    color = SOFT_GREY
-                )
-                Spacer(Modifier.height(24.dp))
-            }
-        }
-    }
-}
-
-@Composable
 fun DisplayTab(settings: AppSettings) {
     var resolution by remember { mutableStateOf(settings.resolution) }
     var preset by remember { mutableStateOf(settings.graphicsPreset) }
@@ -504,68 +451,6 @@ fun ControlTab(settings: AppSettings, onCustomize: () -> Unit) {
     ToggleRow("Toggle Hold Attack", holdAttack) {
         holdAttack = it
         settings.toggleHoldAttack = it
-    }
-}
-
-/** One option: a red marker, a monospace label, and the controls underneath. */
-@Composable
-fun OptionBlock(label: String, content: @Composable () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(Color(0x66000000), RoundedCornerShape(2.dp))
-            .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Text(
-            "▌" + label.uppercase(),
-            fontFamily = FontFamily.Monospace,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
-            color = Color(0xFFFF6B6B)
-        )
-        content()
-    }
-}
-
-@Composable
-fun ChoiceRow(label: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
-    OptionBlock(label) {
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            options.forEach { option ->
-                VhsButton(option, selected = option == selected) { onSelect(option) }
-            }
-        }
-    }
-}
-
-@Composable
-fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
-    ChoiceRow(label, listOf("Off", "On"), if (value) "On" else "Off") { onChange(it == "On") }
-}
-
-@Composable
-fun PercentSliderRow(
-    label: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    onChange: (Float) -> Unit
-) {
-    OptionBlock("$label  ${(value * 100).roundToInt()}%") {
-        Slider(
-            value = value,
-            onValueChange = onChange,
-            valueRange = range,
-            colors = SliderDefaults.colors(
-                thumbColor = Color(0xFFFF6B6B),
-                activeTrackColor = BRAND_RED,
-                inactiveTrackColor = Color(0x55FFFFFF)
-            )
-        )
     }
 }
 

@@ -51,10 +51,11 @@ data class TouchItem(
 val TOUCH_ITEMS = listOf(
     TouchItem("move", "MOVE", 0.13f, 0.68f, 1.9f),
     TouchItem("sprint", "SPRINT", 0.13f, 0.27f, 1.1f),
-    TouchItem("attack", "ATTACK", 0.86f, 0.68f, 1.6f),
-    TouchItem("kick", "KICK", 0.68f, 0.80f, 1.1f),
-    TouchItem("throw", "THROW", 0.70f, 0.54f, 1.1f),
-    TouchItem("use", "USE", 0.92f, 0.38f, 1.1f),
+    TouchItem("attack", "ATTACK / PICKUP", 0.86f, 0.70f, 1.6f),
+    TouchItem("block", "BLOCK", 0.88f, 0.42f, 1.2f),
+    TouchItem("use", "USE", 0.74f, 0.46f, 1.0f),
+    TouchItem("throw", "THROW", 0.66f, 0.64f, 1.0f),
+    TouchItem("kick", "KICK", 0.68f, 0.84f, 1.0f),
     TouchItem("pause", "PAUSE", 0.50f, 0.08f, 0.7f)
 )
 

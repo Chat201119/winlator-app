@@ -173,11 +173,13 @@ object Bridge {
     }
 
     private fun screenSizeFor(context: Context, resolution: String): String = when (resolution) {
+        "1440p" -> "2560x1440"
         "1080p" -> "1920x1080"
         "720p" -> "1280x720"
         "480p" -> "854x480"
         "360p" -> "640x360"
         "240p" -> "426x240"
+        "144p" -> "256x144"
         else -> {
             val dm = context.resources.displayMetrics
             "${max(dm.widthPixels, dm.heightPixels)}x${min(dm.widthPixels, dm.heightPixels)}"
@@ -481,7 +483,8 @@ object Bridge {
         val elements = JSONArray()
         add(elements, "move", "STICK", "CIRCLE", listOf("KEY_W", "KEY_D", "KEY_S", "KEY_A"), false, "", 0.55f)
         add(elements, "sprint", "BUTTON", "CIRCLE", listOf("KEY_SHIFT_L"), s.toggleSprint, "SPRINT", 0.85f)
-        add(elements, "attack", "BUTTON", "CIRCLE", listOf("MOUSE_LEFT_BUTTON"), s.toggleHoldAttack, "ATTACK", 0.75f)
+        add(elements, "attack", "BUTTON", "CIRCLE", listOf("MOUSE_LEFT_BUTTON"), s.toggleHoldAttack, "ATTACK/PICKUP", 0.75f)
+        add(elements, "block", "BUTTON", "CIRCLE", listOf("MOUSE_RIGHT_BUTTON"), false, "BLOCK", 0.85f)
         add(elements, "use", "BUTTON", "CIRCLE", listOf("KEY_E"), false, "USE", 0.85f)
         add(elements, "throw", "BUTTON", "CIRCLE", listOf("KEY_R"), false, "THROW", 0.85f)
         add(elements, "kick", "BUTTON", "CIRCLE", listOf("KEY_F"), false, "KICK", 0.85f)

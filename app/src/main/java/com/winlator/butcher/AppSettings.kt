@@ -4,7 +4,7 @@ import android.content.Context
 import com.winlator.BuildConfig
 import java.io.File
 
-val RESOLUTIONS = listOf("Native", "1080p", "720p", "480p", "360p", "240p")
+val RESOLUTIONS = listOf("Native", "1440p", "1080p", "720p", "480p", "360p", "240p", "144p")
 val GRAPHICS_PRESETS = listOf("Battery Performance", "Low", "Medium", "High", "Quality")
 val OVERLAYS = listOf("Off", "FPS", "FULL")
 val GRAPHICS_DRIVERS = listOf("Auto", "Turnip", "Vortek")

@@ -3,6 +3,7 @@ package com.winlator.butcher
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -92,6 +93,31 @@ object VhsSound {
         }
     }
 
+    private var powerOnTrack: AudioTrack? = null
+
+    /** The sound of a VHS player switching on with no tape in: a thump, static, and a low hum. */
+    fun powerOn() {
+        if (powerOnTrack == null) {
+            val n = RATE * 2200 / 1000
+            val rnd = Random(11)
+            val out = ShortArray(n)
+            for (i in 0 until n) {
+                val t = i.toDouble() / RATE
+                val p = i.toDouble() / n
+                val thump = sin(2 * PI * 70.0 * t) * exp(-t * 35.0)
+                val hum = sin(2 * PI * 60.0 * t) * 0.12 * (1.0 - p * 0.4)
+                val rise = (t / 0.12).coerceAtMost(1.0)
+                val fade = if (p > 0.7) (1.0 - (p - 0.7) / 0.3) else 1.0
+                val band = 0.65 + 0.35 * sin(2 * PI * 2.6 * t) // a slow rolling band in the static
+                val hiss = (rnd.nextDouble() * 2 - 1) * 0.38 * rise * fade * band
+                val s = thump * 0.8 + hum * fade + hiss
+                out[i] = (s.coerceIn(-1.0, 1.0) * 22000).toInt().toShort()
+            }
+            powerOnTrack = build(out)
+        }
+        play(powerOnTrack)
+    }
+
     fun click() {
         if (click == null) click = build(generate(140, 95.0, 45.0, 22.0, 0.10, 0.0))
         play(click)
@@ -135,7 +161,7 @@ fun VhsButton(text: String, selected: Boolean = false, modifier: Modifier = Modi
 @Composable
 fun VhsFrame(content: @Composable BoxScope.() -> Unit) {
     val clock = rememberVhsClock()
-    val seconds by remember { derivedStateOf { (clock.value / 1_000_000_000L).toInt() } }
+    val seconds by remember { derivedStateOf { clock.value; TapeTime.seconds() } }
     Box(Modifier.fillMaxSize().background(Color(0xFF0B0B0B))) {
         content()
         Text(
@@ -160,4 +186,14 @@ fun VhsFrame(content: @Composable BoxScope.() -> Unit) {
         )
         VhsOverlay(clock)
     }
+}
+
+/**
+ * The record counter. It starts when the app opens and keeps counting on every screen,
+ * so switching between menus never resets it.
+ */
+object TapeTime {
+    private val start = SystemClock.elapsedRealtime()
+
+    fun seconds(): Int = ((SystemClock.elapsedRealtime() - start) / 1000L).toInt()
 }
